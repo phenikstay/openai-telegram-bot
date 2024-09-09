@@ -19,7 +19,14 @@ from aiogram.utils.formatting import Text, Bold
 from openai import OpenAI
 
 from base import get_or_create_user_data, save_user_data
+from buttons import (
+    keyboard_model,
+    keyboard_context,
+    keyboard_voice,
+    keyboard_value_work,
+)
 from buttons import keyboard_pic, keyboard
+from function import info_menu_func
 from function import prune_messages, process_voice_message
 from middlewares import ThrottlingMiddleware
 from text import start_message, help_message, system_message_text
@@ -112,15 +119,16 @@ async def process_key_button(message: Message, state: FSMContext):
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
-    await get_or_create_user_data(user_id)
+    info_menu = await info_menu_func(user_id)
 
-    await message.answer(text="Выберите действие:", reply_markup=keyboard)
+    await message.answer(text=f"{info_menu}", reply_markup=keyboard)
     return
 
 
-@router.callback_query(F.data == "gpt_4o_mini")
-async def process_callback_menu_1(callback_query: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == "model_choice")
+async def process_callback_model_choice(
+        callback_query: CallbackQuery, state: FSMContext
+):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
@@ -132,6 +140,30 @@ async def process_callback_menu_1(callback_query: CallbackQuery, state: FSMConte
 
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
+
+    await callback_query.message.edit_text(
+        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        reply_markup=keyboard_model,
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.callback_query(F.data == "gpt_4o_mini")
+async def process_callback_menu_1(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    # Получение или создание объектов пользовательских данных
+    user_data = await get_or_create_user_data(user_id)
+
+    if user_data.model == "gpt-4o-mini":
+        await callback_query.answer()
+        return
 
     user_data.model = "gpt-4o-mini"
     user_data.max_out = 128000
@@ -142,8 +174,8 @@ async def process_callback_menu_1(callback_query: CallbackQuery, state: FSMConte
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text="Включена модель: GPT-4o mini",
-        reply_markup=None,
+        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        reply_markup=keyboard_model,
     )
 
     await callback_query.answer()
@@ -151,18 +183,19 @@ async def process_callback_menu_1(callback_query: CallbackQuery, state: FSMConte
 
 
 @router.callback_query(F.data == "gpt_4_o")
-async def process_callback_menu_2(callback_query: CallbackQuery, state: FSMContext):
+async def process_callback_menu_2(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    if state is not None:
-        await state.clear()
-
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
+
+    if user_data.model == "gpt-4o":
+        await callback_query.answer()
+        return
 
     user_data.model = "gpt-4o"
     user_data.max_out = 128000
@@ -173,8 +206,8 @@ async def process_callback_menu_2(callback_query: CallbackQuery, state: FSMConte
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text="Включена модель: GPT-4o",
-        reply_markup=None,
+        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        reply_markup=keyboard_model,
     )
 
     await callback_query.answer()
@@ -182,18 +215,19 @@ async def process_callback_menu_2(callback_query: CallbackQuery, state: FSMConte
 
 
 @router.callback_query(F.data == "dall_e_3")
-async def process_callback_menu_3(callback_query: CallbackQuery, state: FSMContext):
+async def process_callback_menu_3(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    if state is not None:
-        await state.clear()
-
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
+
+    if user_data.model == "dall-e-3":
+        await callback_query.answer()
+        return
 
     user_data.model = "dall-e-3"
     user_data.model_message_info = "DALL·E 3 HD"
@@ -203,8 +237,8 @@ async def process_callback_menu_3(callback_query: CallbackQuery, state: FSMConte
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text="Включена модель: DALL·E 3",
-        reply_markup=None,
+        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        reply_markup=keyboard_model,
     )
 
     await callback_query.answer()
@@ -213,7 +247,7 @@ async def process_callback_menu_3(callback_query: CallbackQuery, state: FSMConte
 
 @router.callback_query(F.data == "pic_setup")
 async def process_callback_menu_pic_setup(
-    callback_query: CallbackQuery, state: FSMContext
+        callback_query: CallbackQuery, state: FSMContext
 ):
     user_id = callback_query.from_user.id
 
@@ -237,7 +271,7 @@ async def process_callback_menu_pic_setup(
 
 
 @router.callback_query(F.data == "set_sd")
-async def process_callback_set_sd(callback_query: CallbackQuery, state: FSMContext):
+async def process_callback_set_sd(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
@@ -248,6 +282,7 @@ async def process_callback_set_sd(callback_query: CallbackQuery, state: FSMConte
     user_data = await get_or_create_user_data(user_id)
 
     if user_data.pic_grade == "standard":
+        await callback_query.answer()
         return
 
     user_data.pic_grade = "standard"
@@ -265,7 +300,7 @@ async def process_callback_set_sd(callback_query: CallbackQuery, state: FSMConte
 
 
 @router.callback_query(F.data == "set_hd")
-async def process_callback_set_hd(callback_query: CallbackQuery, state: FSMContext):
+async def process_callback_set_hd(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
@@ -276,6 +311,7 @@ async def process_callback_set_hd(callback_query: CallbackQuery, state: FSMConte
     user_data = await get_or_create_user_data(user_id)
 
     if user_data.pic_grade == "hd":
+        await callback_query.answer()
         return
 
     user_data.pic_grade = "hd"
@@ -293,9 +329,7 @@ async def process_callback_set_hd(callback_query: CallbackQuery, state: FSMConte
 
 
 @router.callback_query(F.data == "set_1024x1024")
-async def process_callback_set_1024x1024(
-    callback_query: CallbackQuery, state: FSMContext
-):
+async def process_callback_set_1024x1024(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
@@ -306,6 +340,7 @@ async def process_callback_set_1024x1024(
     user_data = await get_or_create_user_data(user_id)
 
     if user_data.pic_size == "1024x1024":
+        await callback_query.answer()
         return
 
     user_data.pic_size = "1024x1024"
@@ -323,9 +358,7 @@ async def process_callback_set_1024x1024(
 
 
 @router.callback_query(F.data == "set_1024x1792")
-async def process_callback_set_1024x1792(
-    callback_query: CallbackQuery, state: FSMContext
-):
+async def process_callback_set_1024x1792(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
@@ -336,6 +369,7 @@ async def process_callback_set_1024x1792(
     user_data = await get_or_create_user_data(user_id)
 
     if user_data.pic_size == "1024x1792":
+        await callback_query.answer()
         return
 
     user_data.pic_size = "1024x1792"
@@ -353,9 +387,7 @@ async def process_callback_set_1024x1792(
 
 
 @router.callback_query(F.data == "set_1792x1024")
-async def process_callback_set_1792x1024(
-    callback_query: CallbackQuery, state: FSMContext
-):
+async def process_callback_set_1792x1024(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
@@ -366,6 +398,7 @@ async def process_callback_set_1792x1024(
     user_data = await get_or_create_user_data(user_id)
 
     if user_data.pic_size == "1792x1024":
+        await callback_query.answer()
         return
 
     user_data.pic_size = "1792x1024"
@@ -382,22 +415,10 @@ async def process_callback_set_1792x1024(
     return
 
 
-@router.callback_query(F.data == "back_menu")
-async def process_callback_menu_back(callback_query: CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
-
-    if user_id not in OWNER_ID:
-        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
-        return
-
-    await callback_query.message.edit_text(
-        text="Выберите действие:", reply_markup=keyboard
-    )
-    return
-
-
-@router.callback_query(F.data == "context")
-async def process_callback_context(callback_query: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == "context_work")
+async def process_callback_context_work(
+        callback_query: CallbackQuery, state: FSMContext
+):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
@@ -407,11 +428,37 @@ async def process_callback_context(callback_query: CallbackQuery, state: FSMCont
     if state is not None:
         await state.clear()
 
+    # Получение или создание объектов пользовательских данных
+    user_data = await get_or_create_user_data(user_id)
+
+    await callback_query.message.edit_text(
+        text=f"<i>Сообщений:</i> {user_data.count_messages} ",
+        reply_markup=keyboard_context,
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.callback_query(F.data == "context")
+async def process_callback_context(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
     user_data = await get_or_create_user_data(user_id)
     history = await generate_history(user_data.messages)
 
+    if callback_query.message.text == "Контекст пуст":
+        await callback_query.answer()
+        return
+
     if not history:
-        await callback_query.message.edit_text(text="Контекст пуст", reply_markup=None)
+        await callback_query.message.edit_text(
+            text="Контекст пуст", reply_markup=keyboard_context
+        )
         await callback_query.answer()
         return
 
@@ -467,15 +514,12 @@ async def send_message(user_id, content):
 
 
 @router.callback_query(F.data == "clear")
-async def process_callback_clear(callback_query: CallbackQuery, state: FSMContext):
+async def process_callback_clear(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
-
-    if state is not None:
-        await state.clear()
 
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
@@ -486,73 +530,22 @@ async def process_callback_clear(callback_query: CallbackQuery, state: FSMContex
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
-    await callback_query.message.edit_text(text="Контекст очищен", reply_markup=None)
-
-    await callback_query.answer()
-    return
-
-
-@router.callback_query(F.data == "voice_answer_add")
-async def process_callback_voice_answer_add(
-    callback_query: CallbackQuery, state: FSMContext
-):
-    user_id = callback_query.from_user.id
-
-    if user_id not in OWNER_ID:
-        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+    if callback_query.message.text == "Контекст очищен":
+        await callback_query.answer()
         return
 
-    if state is not None:
-        await state.clear()
-
-    # Получение или создание объектов пользовательских данных
-    user_data = await get_or_create_user_data(user_id)
-
-    user_data.voice_answer = True
-
-    # Сохранение обновленных данных в базу данных
-    await save_user_data(user_id)
-
     await callback_query.message.edit_text(
-        text="Аудио ответ включен", reply_markup=None
+        text="Контекст очищен", reply_markup=keyboard_context
     )
 
     await callback_query.answer()
     return
 
 
-@router.callback_query(F.data == "voice_answer_del")
-async def process_callback_voice_answer_del(
-    callback_query: CallbackQuery, state: FSMContext
+@router.callback_query(F.data == "voice_answer_work")
+async def process_callback_voice_answer_work(
+        callback_query: CallbackQuery, state: FSMContext
 ):
-    user_id = callback_query.from_user.id
-
-    if user_id not in OWNER_ID:
-        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
-        return
-
-    if state is not None:
-        await state.clear()
-
-    # Получение или создание объектов пользовательских данных
-    user_data = await get_or_create_user_data(user_id)
-
-    user_data.voice_answer = False
-
-    # Сохранение обновленных данных в базу данных
-    await save_user_data(user_id)
-
-    await callback_query.message.edit_text(
-        text="Аудио ответ выключен",
-        reply_markup=None,
-    )
-
-    await callback_query.answer()
-    return
-
-
-@router.callback_query(F.data == "info")
-async def process_callback_info(callback_query: CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
@@ -567,24 +560,99 @@ async def process_callback_info(callback_query: CallbackQuery, state: FSMContext
 
     info_voice_answer = "Включен" if user_data.voice_answer else "Выключен"
 
+    await callback_query.message.edit_text(
+        text=f"<i>Аудио:</i> {info_voice_answer}",
+        reply_markup=keyboard_voice,
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.callback_query(F.data == "voice_answer_add")
+async def process_callback_voice_answer_add(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    # Получение или создание объектов пользовательских данных
+    user_data = await get_or_create_user_data(user_id)
+
+    if user_data.voice_answer:
+        await callback_query.answer()
+        return
+
+    user_data.voice_answer = True
+
+    # Сохранение обновленных данных в базу данных
+    await save_user_data(user_id)
+
+    info_voice_answer = "Включен" if user_data.voice_answer else "Выключен"
+
+    await callback_query.message.edit_text(
+        text=f"<i>Аудио:</i> {info_voice_answer}", reply_markup=keyboard_voice
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.callback_query(F.data == "voice_answer_del")
+async def process_callback_voice_answer_del(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    # Получение или создание объектов пользовательских данных
+    user_data = await get_or_create_user_data(user_id)
+
+    if not user_data.voice_answer:
+        await callback_query.answer()
+        return
+
+    user_data.voice_answer = False
+
+    # Сохранение обновленных данных в базу данных
+    await save_user_data(user_id)
+
+    info_voice_answer = "Включен" if user_data.voice_answer else "Выключен"
+
+    await callback_query.message.edit_text(
+        text=f"<i>Аудио:</i> {info_voice_answer}",
+        reply_markup=keyboard_voice,
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.callback_query(F.data == "system_value_work")
+async def process_callback_voice_answer_work(
+        callback_query: CallbackQuery, state: FSMContext
+):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    if state is not None:
+        await state.clear()
+
+    # Получение или создание объектов пользовательских данных
+    user_data = await get_or_create_user_data(user_id)
+
     info_system_message = (
         "Отсутствует" if not user_data.system_message else user_data.system_message
     )
 
-    info_messages = (
-        f"<i>Общее количество сообщений:</i> <b>{user_data.count_messages}</b>\n"
-        f"<i>Текущая модель:</i> <b>{user_data.model_message_info}</b>\n"
-        f"<i>Голосовой ответ:</i> <b>{info_voice_answer}</b>\n"
-        f"<i>Время старта бота:</i> <b>{formatted_datetime}</b>\n"
-        f"<i>Ваш User ID:</i> <b>{user_id}</b>\n"
-        f"<i>Системная роль:</i> <b>{info_system_message}</b>\n"
-        f"<i>Качество картинки:</i> <b>{user_data.pic_grade}</b>\n"
-        f"<i>Размер картинки:</i> <b>{user_data.pic_size}</b>"
-    )
-
     await callback_query.message.edit_text(
-        text=info_messages,
-        reply_markup=None,
+        text=f"<i>Роль:</i> {info_system_message}",
+        reply_markup=keyboard_value_work,
     )
 
     await callback_query.answer()
@@ -594,7 +662,7 @@ async def process_callback_info(callback_query: CallbackQuery, state: FSMContext
 # Обработчик нажатия на кнопку
 @router.callback_query(F.data == "change_value")
 async def process_callback_change_value(
-    callback_query: types.CallbackQuery, state: FSMContext
+        callback_query: types.CallbackQuery, state: FSMContext
 ):
     user_id = callback_query.from_user.id
 
@@ -614,29 +682,30 @@ async def process_callback_change_value(
 
 
 @router.callback_query(F.data == "delete_value")
-async def process_callback_delete_value(
-    callback_query: CallbackQuery, state: FSMContext
-):
+async def process_callback_delete_value(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    if state is not None:
-        await state.clear()
-
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
+
+    if not user_data.system_message:
+        await callback_query.answer()
+        return
 
     user_data.system_message = ""
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
+    info_system_message = "Задана" if user_data.system_message else "Отсутствует"
+
     await callback_query.message.edit_text(
-        text="<b>Системная роль удалена</b>",
-        reply_markup=None,
+        text=f"<i>Роль:</i> {info_system_message}",
+        reply_markup=keyboard_value_work,
     )
 
     await callback_query.answer()
@@ -674,6 +743,63 @@ async def process_new_value(message: types.Message, state: FSMContext):
     await message.answer(
         f"<b>Системная роль изменена на:</b> <i>{user_data.system_message}</i>"
     )
+    return
+
+
+@router.callback_query(F.data == "back_menu")
+async def process_callback_menu_back(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    info_menu = await info_menu_func(user_id)
+
+    await callback_query.message.edit_text(
+        text=f"{info_menu}", reply_markup=keyboard
+    )
+    return
+
+
+@router.callback_query(F.data == "info")
+async def process_callback_info(callback_query: CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    if state is not None:
+        await state.clear()
+
+    # Получение или создание объектов пользовательских данных
+    user_data = await get_or_create_user_data(user_id)
+
+    info_voice_answer = "Включен" if user_data.voice_answer else "Выключен"
+
+    info_system_message = (
+        "Отсутствует" if not user_data.system_message else user_data.system_message
+    )
+
+    info_messages = (
+        f"<i>Старт:</i> <b>{formatted_datetime}</b>\n"
+        f"<i>User ID:</i> <b>{user_id}</b>\n"
+        f"<i>Модель:</i> <b>{user_data.model_message_info}</b>\n"
+        f"<i>Картинка</i>\n"
+        f"<i>Качество:</i> <b>{user_data.pic_grade}</b>\n"
+        f"<i>Размер:</i> <b>{user_data.pic_size}</b>\n"
+        f"<i>Сообщения:</i> <b>{user_data.count_messages}</b>\n"
+        f"<i>Аудио:</i> <b>{info_voice_answer}</b>\n"
+        f"<i>Роль:</i> <b>{info_system_message}</b>"
+    )
+
+    await callback_query.message.edit_text(
+        text=info_messages,
+        reply_markup=None,
+    )
+
+    await callback_query.answer()
     return
 
 
@@ -768,7 +894,7 @@ async def chatgpt_text_handler(message: Message):
 
             # Функция отправки kwargs
             async def send_message_kwargs(
-                model_massage_kwargs, response_message_kwargs
+                    model_massage_kwargs, response_message_kwargs
             ):
                 content_kwargs = Text(
                     Bold(model_massage_kwargs), response_message_kwargs
@@ -778,7 +904,7 @@ async def chatgpt_text_handler(message: Message):
                 )
 
             async def send_message_kwargs_long(
-                model_message_kwargs, response_message_kwargs
+                    model_message_kwargs, response_message_kwargs
             ):
                 content = f"{model_message_kwargs}\n{response_message_kwargs}"  # Соединяем две части сообщения
                 messages = content.split("\n")  # Разделяем сообщение по \n
