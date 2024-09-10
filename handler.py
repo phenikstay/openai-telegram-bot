@@ -682,12 +682,15 @@ async def process_callback_change_value(
 
 
 @router.callback_query(F.data == "delete_value")
-async def process_callback_delete_value(callback_query: CallbackQuery):
+async def process_callback_delete_value(callback_query: CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
+
+    if state is not None:
+        await state.clear()
 
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
@@ -701,7 +704,9 @@ async def process_callback_delete_value(callback_query: CallbackQuery):
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
-    info_system_message = "Задана" if user_data.system_message else "Отсутствует"
+    info_system_message = (
+        "Отсутствует" if not user_data.system_message else user_data.system_message
+    )
 
     await callback_query.message.edit_text(
         text=f"<i>Роль:</i> {info_system_message}",
@@ -740,19 +745,27 @@ async def process_new_value(message: types.Message, state: FSMContext):
 
     await state.clear()
 
+    info_system_message = (
+        "Отсутствует" if not user_data.system_message else user_data.system_message
+    )
+
     await message.answer(
-        f"<b>Системная роль изменена на:</b> <i>{user_data.system_message}</i>"
+        text=f"<i>Роль:</i> {info_system_message}",
+        reply_markup=keyboard_value_work,
     )
     return
 
 
 @router.callback_query(F.data == "back_menu")
-async def process_callback_menu_back(callback_query: CallbackQuery):
+async def process_callback_menu_back(callback_query: CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
+
+    if state is not None:
+        await state.clear()
 
     info_menu = await info_menu_func(user_id)
 
@@ -790,7 +803,7 @@ async def process_callback_info(callback_query: CallbackQuery, state: FSMContext
         f"<i>Качество:</i> <b>{user_data.pic_grade}</b>\n"
         f"<i>Размер:</i> <b>{user_data.pic_size}</b>\n"
         f"<i>Сообщения:</i> <b>{user_data.count_messages}</b>\n"
-        f"<i>Аудио:</i> <b>{info_voice_answer}</b>\n"
+        f"<i>Аудио ответ:</i> <b>{info_voice_answer}</b>\n"
         f"<i>Роль:</i> <b>{info_system_message}</b>"
     )
 

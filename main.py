@@ -4,7 +4,7 @@ import logging
 import sys
 from pathlib import Path
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -17,11 +17,26 @@ config.read(Path(__file__).parent / "config.ini")
 TOKEN = config.get("Telegram", "token")
 
 
+async def set_commands(bot: Bot):
+    commands = {
+        types.BotCommandScopeAllPrivateChats(): [
+            types.BotCommand(command="/start", description="🔄 старт/очистка"),
+            types.BotCommand(command="/menu", description="➡️ меню"),
+            types.BotCommand(command="/help", description="ℹ️ помощь"),
+        ],
+        types.BotCommandScopeAllGroupChats(): []
+    }
+
+    for scope, command_list in commands.items():
+        await bot.set_my_commands(commands=command_list, scope=scope)
+
+
 async def start_bot():
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
     await bot.delete_webhook(drop_pending_updates=True)
+    await set_commands(bot)
     return bot, dp
 
 
