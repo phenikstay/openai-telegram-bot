@@ -504,6 +504,9 @@ async def send_history(user_id, history):
         await send_message(user_id, chunk)
 
 
+    await send_menu(user_id)
+
+
 async def send_message(user_id, content):
     content_kwargs = Text(content)
     await bot.send_message(
@@ -511,6 +514,14 @@ async def send_message(user_id, content):
         **content_kwargs.as_kwargs(),
         disable_web_page_preview=True,
     )
+
+
+async def send_menu(user_id):
+    await bot.send_message(
+        user_id,
+        text=f"Действия с контекстом",
+        reply_markup=keyboard_context,
+        )
 
 
 @router.callback_query(F.data == "clear")
