@@ -1,25 +1,24 @@
+# Define button texts and callback data
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 BUTTONS_ALL = [
-    ("GPT-4o mini", "gpt_4o_mini"),
-    ("GPT-4o", "gpt_4_o"),
-    ("DALL·E 3", "dall_e_3"),
+    ("Выбор модели", "model_choice"),
     ("Параметры картинки", "pic_setup"),
-    ("Показать контекст диалога", "context"),
-    ("Очистить контекст", "clear"),
-    ("Включить аудио ответ", "voice_answer_add"),
-    ("Выключить аудио ответ", "voice_answer_del"),
-    ("Назначить системную роль", "change_value"),
-    ("Убрать системную роль", "delete_value"),
+    ("Контекст", "context_work"),
+    ("Аудио", "voice_answer_work"),
+    ("Системная роль", "system_value_work"),
     ("Информация", "info"),
 ]
 
+# Create inline keyboard buttons
 inline_buttons = [
     InlineKeyboardButton(text=text, callback_data=data) for text, data in BUTTONS_ALL
 ]
 
+# Create main keyboard
 keyboard = InlineKeyboardMarkup(inline_keyboard=[[button] for button in inline_buttons])
 
+#
 pic_buttons = [
     ("SD", "set_sd"),
     ("HD", "set_hd"),
@@ -29,10 +28,79 @@ pic_buttons = [
     ("Назад в меню", "back_menu"),
 ]
 
+#
 inline_buttons_pic = [
     InlineKeyboardButton(text=text, callback_data=data) for text, data in pic_buttons
 ]
 
+#
 keyboard_pic = InlineKeyboardMarkup(
     inline_keyboard=[[button] for button in inline_buttons_pic]
+)
+
+BUTTONS_MODEL = [
+    ("GPT-4o mini", "gpt_4o_mini"),
+    ("GPT-4o", "gpt_4_o"),
+    ("DALL·E 3", "dall_e_3"),
+    ("Назад в меню", "back_menu"),
+]
+
+# Create inline keyboard buttons
+inline_buttons_model = [
+    InlineKeyboardButton(text=text, callback_data=data) for text, data in BUTTONS_MODEL
+]
+
+# Create main keyboard
+keyboard_model = InlineKeyboardMarkup(
+    inline_keyboard=[[button] for button in inline_buttons_model]
+)
+
+BUTTONS_CONTEXT = [
+    ("Показать контекст", "context"),
+    ("Очистить контекст", "clear"),
+    ("Назад в меню", "back_menu"),
+]
+
+# Create inline keyboard buttons
+inline_buttons_context = [
+    InlineKeyboardButton(text=text, callback_data=data)
+    for text, data in BUTTONS_CONTEXT
+]
+
+# Create main keyboard
+keyboard_context = InlineKeyboardMarkup(
+    inline_keyboard=[[button] for button in inline_buttons_context]
+)
+
+BUTTONS_VOICE = [
+    ("Включить аудио ответ", "voice_answer_add"),
+    ("Выключить аудио ответ", "voice_answer_del"),
+    ("Назад в меню", "back_menu"),
+]
+
+# Create inline keyboard buttons
+inline_buttons_voice = [
+    InlineKeyboardButton(text=text, callback_data=data) for text, data in BUTTONS_VOICE
+]
+
+# Create main keyboard
+keyboard_voice = InlineKeyboardMarkup(
+    inline_keyboard=[[button] for button in inline_buttons_voice]
+)
+
+BUTTONS_VALUE_WORK = [
+    ("Назначить системную роль", "change_value"),
+    ("Убрать системную роль", "delete_value"),
+    ("Назад в меню", "back_menu"),
+]
+
+# Create inline keyboard buttons
+inline_buttons_value_work = [
+    InlineKeyboardButton(text=text, callback_data=data)
+    for text, data in BUTTONS_VALUE_WORK
+]
+
+# Create main keyboard
+keyboard_value_work = InlineKeyboardMarkup(
+    inline_keyboard=[[button] for button in inline_buttons_value_work]
 )
