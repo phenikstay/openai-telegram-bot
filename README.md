@@ -1,79 +1,90 @@
 # Telegram Bot Using OpenAI
-This project is a Telegram bot written in Python using the aiogram 3 library. It uses the OpenAI API to generate texts and images, as well as to work with audio messages. The bot supports several OpenAI models, including GPT-4.0 Omni and DALL·E 3, and allows users to interact with it through text and voice messages.
+
+This project is a Telegram bot written in Python using the `aiogram` library. It interfaces with the OpenAI API to generate texts and images, including functionalities to handle audio messages. The bot supports various OpenAI models like GPT-4.0 Omni and DALL·E 3, enabling interactions through both text and voice messages.
 
 ## Installation and Setup
+
 ### Requirements
 - Python 3.8 or higher
 
 ### Installing
-1. Clone the repository:
-   ```sh
+
+1. **Clone the repository:**
+   ```bash
    git clone https://github.com/phenikstay/openai-telegram-bot.git
    cd openai-telegram-bot
    ```
-   
-2. Create a directory for audio files:
-   ```sh
+
+2. **Create a directory for audio files:**
+   ```bash
    mkdir voice
    ```
 
-3. Install the dependencies:
-   ```sh
+3. **Install the dependencies:**
+   ```bash
    pip install -r requirements.txt
    ```
 
 ### Configuration
+
 1. Create a `config.ini` file in the root directory of the project and add the following lines:
+
    ```ini
    [OpenAI]
    api_key = your_api_key
-   
+
    [Telegram]
    token = your_token
    owner_id = your_user_id
    ```
+
    - `api_key`: Your OpenAI API key.
    - `token`: Your Telegram bot token.
    - `owner_id`: Your User ID in Telegram, which will have access to the bot.
 
-## Running the Bot
+### Running the Bot
+
 Run the bot with the following command:
-```sh
+```bash
 python main.py
 ```
 
 ## Features
+
 ### Main Commands
-- `/start`: Initializes the GPT-4.0 Mini model, disables voice response, clears the dialogue context, resets the message counter, removes the system role, and sets the image quality and size.
-- `/menu`: Opens the settings menu.
-- `/help`: Displays help and usage instructions for the bot.
+
+- **/start**: Initializes the GPT-4.0 Mini model, disables voice response, clears the dialogue context, resets the message counter, removes the system role, and sets the image quality and size.
+- **/menu**: Opens the settings menu.
+- **/help**: Displays help and usage instructions for the bot.
 
 ### Settings Menu
-- **Model Selection**:
+
+- **Model Selection:**
   - GPT-4.0 Mini
   - GPT-4.0
   - DALL·E 3
 
-- **Image Settings**:
+- **Image Settings:**
   - Set quality (SD/HD)
   - Set size (1024x1024, 1024x1792, 1792x1024)
 
-- **Context Actions**:
+- **Context Actions:**
   - Show current context
   - Clear current context
 
-- **Voice Responses**:
+- **Voice Responses:**
   - Enable voice response
   - Disable voice response
 
-- **System Role**:
+- **System Role:**
   - Assign system role
   - Remove system role
 
-- **Information**:
+- **Information:**
   - Show bot status information
 
 ## Project Structure
+
 - `main.py`: Main file to run the bot.
 - `handler.py`: Handlers for various commands and messages.
 - `classes.py`: Classes for database operations and user data management.
@@ -86,7 +97,5 @@ python main.py
 - `requirements.txt`: List of dependencies.
 
 ## Contribution and Support
-If you find any bugs or have suggestions for improvement, feel free to create an issue or submit a pull request in this repository.
 
-## License
-This project is licensed under the MIT License.
+If you find any bugs or have suggestions for improvement, feel free to create an issue or submit a pull request in this repository.
