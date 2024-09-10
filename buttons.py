@@ -3,9 +3,9 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 BUTTONS_ALL = [
     ("Выбор модели", "model_choice"),
-    ("Параметры картинки", "pic_setup"),
-    ("Контекст", "context_work"),
-    ("Аудио", "voice_answer_work"),
+    ("Настройки изображения", "pic_setup"),
+    ("Действия с контекстом", "context_work"),
+    ("Голосовые ответы", "voice_answer_work"),
     ("Системная роль", "system_value_work"),
     ("Информация", "info"),
 ]
