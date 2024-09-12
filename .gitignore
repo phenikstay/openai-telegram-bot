@@ -4,4 +4,3 @@ __pycache__/
 voice/*.*
 *.db
 conf.ini
-*.txt
