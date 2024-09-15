@@ -39,8 +39,10 @@ keyboard_pic = InlineKeyboardMarkup(
 )
 
 BUTTONS_MODEL = [
-    ("GPT-4o mini", "gpt_4o_mini"),
-    ("GPT-4o", "gpt_4_o"),
+    ("4o mini", "gpt_4o_mini"),
+    ("4o", "gpt_4_o"),
+    ("o1 mini", "gpt_o1_mini"),
+    ("o1", "gpt_o1_preview"),
     ("DALL·E 3", "dall_e_3"),
     ("Назад в меню", "back_menu"),
 ]

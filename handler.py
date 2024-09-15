@@ -90,8 +90,8 @@ async def command_start_handler(message: Message, state: FSMContext):
     user_data = await get_or_create_user_data(user_id)
 
     user_data.model = "gpt-4o-mini"
-    user_data.model_message_info = "GPT-4o mini"
-    user_data.model_message_chat = "GPT-4o mini:\n\n"
+    user_data.model_message_info = "4o mini"
+    user_data.model_message_chat = "4o mini:\n\n"
     user_data.messages = []
     user_data.count_messages = 0
     user_data.max_out = 128000
@@ -167,8 +167,8 @@ async def process_callback_menu_1(callback_query: CallbackQuery):
 
     user_data.model = "gpt-4o-mini"
     user_data.max_out = 128000
-    user_data.model_message_info = "GPT-4o mini"
-    user_data.model_message_chat = "GPT-4o mini:\n\n"
+    user_data.model_message_info = "4o mini"
+    user_data.model_message_chat = "4o mini:\n\n"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
@@ -199,8 +199,72 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
 
     user_data.model = "gpt-4o"
     user_data.max_out = 128000
-    user_data.model_message_info = "GPT-4o"
-    user_data.model_message_chat = "GPT-4o:\n\n"
+    user_data.model_message_info = "4o"
+    user_data.model_message_chat = "4o:\n\n"
+
+    # Сохранение обновленных данных в базу данных
+    await save_user_data(user_id)
+
+    await callback_query.message.edit_text(
+        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        reply_markup=keyboard_model,
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.callback_query(F.data == "gpt_o1_mini")
+async def process_callback_menu_1(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    # Получение или создание объектов пользовательских данных
+    user_data = await get_or_create_user_data(user_id)
+
+    if user_data.model == "o1-mini":
+        await callback_query.answer()
+        return
+
+    user_data.model = "o1-mini"
+    user_data.max_out = 128000
+    user_data.model_message_info = "o1 mini"
+    user_data.model_message_chat = "o1 mini:\n\n"
+
+    # Сохранение обновленных данных в базу данных
+    await save_user_data(user_id)
+
+    await callback_query.message.edit_text(
+        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        reply_markup=keyboard_model,
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.callback_query(F.data == "gpt_o1_preview")
+async def process_callback_menu_2(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    # Получение или создание объектов пользовательских данных
+    user_data = await get_or_create_user_data(user_id)
+
+    if user_data.model == "o1-preview":
+        await callback_query.answer()
+        return
+
+    user_data.model = "o1-preview"
+    user_data.max_out = 128000
+    user_data.model_message_info = "o1"
+    user_data.model_message_chat = "o1:\n\n"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
@@ -503,7 +567,6 @@ async def send_history(user_id, history):
     for chunk in chunks:
         await send_message(user_id, chunk)
 
-
     await send_menu(user_id)
 
 
@@ -521,7 +584,7 @@ async def send_menu(user_id):
         user_id,
         text=f"Действия с контекстом",
         reply_markup=keyboard_context,
-        )
+    )
 
 
 @router.callback_query(F.data == "clear")
@@ -871,7 +934,12 @@ async def chatgpt_text_handler(message: Message):
         # Если сообщение содержит текст
         promt = message.text
 
-    if user_data.model == "gpt-4o-mini" or user_data.model == "gpt-4o":
+    if (
+            user_data.model == "gpt-4o-mini"
+            or user_data.model == "gpt-4o"
+            or user_data.model == "o1-mini"
+            or user_data.model == "o1-preview"
+    ):
 
         # Добавляем сообщение пользователя в историю чата
         user_data.messages.append({"role": "user", "content": promt})
@@ -887,7 +955,9 @@ async def chatgpt_text_handler(message: Message):
                 "role": "system",
                 "content": user_data.system_message,
             }
-            pruned_messages.insert(0, system_message)
+
+            if user_data.model == "gpt-4o-mini" or user_data.model == "gpt-4o":
+                pruned_messages.insert(0, system_message)
 
             # Use asyncio.to_thread for OpenAI API call
             chat_completion = await asyncio.to_thread(

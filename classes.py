@@ -33,8 +33,8 @@ class UserData:
         self.messages = []
         self._count_messages = 0
         self._model = "gpt-4o-mini"
-        self._model_message_info = "GPT-4o mini"
-        self._model_message_chat = "GPT-4o mini:\n\n"
+        self._model_message_info = "4o mini"
+        self._model_message_chat = "4o mini:\n\n"
         self._max_out = 128000
         self._voice_answer = False
         self._system_message = ""
