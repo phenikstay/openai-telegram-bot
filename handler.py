@@ -294,8 +294,8 @@ async def process_callback_menu_3(callback_query: CallbackQuery):
         return
 
     user_data.model = "dall-e-3"
-    user_data.model_message_info = "DALL·E 3 HD"
-    user_data.model_message_chat = "DALL·E 3 HD:\n\n"
+    user_data.model_message_info = "DALL·E 3"
+    user_data.model_message_chat = "DALL·E 3:\n\n"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
