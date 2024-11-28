@@ -94,7 +94,7 @@ async def command_start_handler(message: Message, state: FSMContext):
     user_data.model_message_chat = "4o mini:\n\n"
     user_data.messages = []
     user_data.count_messages = 0
-    user_data.max_out = 128000
+    user_data.max_out = 120000
     user_data.voice_answer = False
     user_data.system_message = ""
     user_data.pic_grade = "standard"
@@ -166,7 +166,7 @@ async def process_callback_menu_1(callback_query: CallbackQuery):
         return
 
     user_data.model = "gpt-4o-mini"
-    user_data.max_out = 128000
+    user_data.max_out = 120000
     user_data.model_message_info = "4o mini"
     user_data.model_message_chat = "4o mini:\n\n"
 
@@ -198,7 +198,7 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
         return
 
     user_data.model = "gpt-4o"
-    user_data.max_out = 128000
+    user_data.max_out = 120000
     user_data.model_message_info = "4o"
     user_data.model_message_chat = "4o:\n\n"
 
@@ -230,7 +230,7 @@ async def process_callback_menu_1(callback_query: CallbackQuery):
         return
 
     user_data.model = "o1-mini"
-    user_data.max_out = 128000
+    user_data.max_out = 120000
     user_data.model_message_info = "o1 mini"
     user_data.model_message_chat = "o1 mini:\n\n"
 
@@ -262,7 +262,7 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
         return
 
     user_data.model = "o1-preview"
-    user_data.max_out = 128000
+    user_data.max_out = 120000
     user_data.model_message_info = "o1"
     user_data.model_message_chat = "o1:\n\n"
 

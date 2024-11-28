@@ -35,7 +35,7 @@ class UserData:
         self._model = "gpt-4o-mini"
         self._model_message_info = "4o mini"
         self._model_message_chat = "4o mini:\n\n"
-        self._max_out = 128000
+        self._max_out = 120000
         self._voice_answer = False
         self._system_message = ""
         self._pic_grade = "standard"
