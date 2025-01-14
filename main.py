@@ -9,6 +9,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
+from classes import init_async_db
 from handler import router
 
 config = configparser.ConfigParser()
@@ -22,9 +23,9 @@ async def set_commands(bot: Bot):
         types.BotCommandScopeAllPrivateChats(): [
             types.BotCommand(command="/start", description="🔄 старт/очистка"),
             types.BotCommand(command="/menu", description="➡️ меню"),
-            types.BotCommand(command="/help", description="ℹ️ помощь"),
+            types.BotCommand(command="/help", description="ℹ️ помощь!"),
         ],
-        types.BotCommandScopeAllGroupChats(): []
+        types.BotCommandScopeAllGroupChats(): [],
     }
 
     for scope, command_list in commands.items():
@@ -36,7 +37,6 @@ async def start_bot():
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
     await bot.delete_webhook(drop_pending_updates=True)
-    await set_commands(bot)
     return bot, dp
 
 
@@ -44,6 +44,8 @@ async def main():
     bot = None
     try:
         bot, dp = await start_bot()
+        await set_commands(bot)
+        await init_async_db()
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     except Exception as e:
         logging.exception(f"An error occurred: {e}")
@@ -53,5 +55,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
+    logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
     asyncio.run(main())

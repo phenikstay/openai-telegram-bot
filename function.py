@@ -1,6 +1,5 @@
 import asyncio
 import configparser
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from aiogram import Bot, types
@@ -11,7 +10,7 @@ from pydub import AudioSegment
 
 from base import get_or_create_user_data
 
-# Чтение параметров из config.ini
+# Читаем конфигурацию
 config = configparser.ConfigParser()
 config.read(Path(__file__).parent / "config.ini")
 
@@ -21,37 +20,38 @@ bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 # Параметры для OpenAI
 openai_api_key = config.get("OpenAI", "api_key")
-
-# Использование параметров для инициализации OpenAI
 client = OpenAI(api_key=openai_api_key)
 
 
 async def info_menu_func(user_id):
     user_data = await get_or_create_user_data(user_id)
 
-    info_voice_answer = "Включен" if user_data.voice_answer else "Выключен"
-    info_system_message = "Задана" if user_data.system_message else "Отсутствует"
+    info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
+    info_system_message = "Задана" if user_data["system_message"] else "Отсутствует"
 
     info_menu = (
-        f"<i>Сообщений:</i> <b>{user_data.count_messages}</b>\n"
-        f"<i>Модель:</i> <b>{user_data.model_message_info}</b>\n"
+        f"<i>Сообщений:</i> <b>{user_data['count_messages']}</b>\n"
+        f"<i>Модель:</i> <b>{user_data['model_message_info']}</b>\n"
         f"<i>Аудио:</i> <b>{info_voice_answer}</b>\n"
         f"<i>Роль:</i> <b>{info_system_message}</b>\n"
         f"<i>Картинка</i>\n"
-        f"<i>Качество:</i> <b>{user_data.pic_grade}</b>\n"
-        f"<i>Размер:</i> <b>{user_data.pic_size}</b>"
+        f"<i>Качество:</i> <b>{user_data['pic_grade']}</b>\n"
+        f"<i>Размер:</i> <b>{user_data['pic_size']}</b>"
     )
     return info_menu
 
 
 async def prune_messages(messages, max_chars):
+    """
+    Обрезает историю сообщений по символам, начиная с конца.
+    """
     pruned_messages = []
     total_chars = 0
 
+    # Идём с конца к началу
     for message in reversed(messages):
         content_length = len(message["content"])
         remaining_chars = max_chars - total_chars
-
         if remaining_chars <= 0:
             break
 
@@ -63,33 +63,119 @@ async def prune_messages(messages, max_chars):
         pruned_messages.append(message)
         total_chars += content_length
 
+    # Возвращаем в прямом порядке
     return list(reversed(pruned_messages))
 
 
 async def process_voice_message(bot: Bot, message: types.Message, user_id: int):
-    # Получение ID файла голосового сообщения
+    """
+    Скачивает голосовое сообщение, конвертирует его в mp3 и отправляет на распознавание через OpenAI.
+    Возвращает текст транскрипции.
+    """
     file_id = message.voice.file_id
     file_info = await bot.get_file(file_id)
-    ogg_path = Path(__file__).parent / f"voice/voice_{user_id}.ogg"
-    mp3_path = Path(__file__).parent / f"voice/voice_{user_id}.mp3"
 
-    # Скачивание файла
+    # Создаем директорию 'voice', если она не существует
+    voice_dir = Path(__file__).parent / "voice"
+    voice_dir.mkdir(exist_ok=True)
+
+    ogg_path = voice_dir / f"voice_{user_id}.ogg"
+    mp3_path = voice_dir / f"voice_{user_id}.mp3"
+
+    # Скачиваем файл в формате OGG
     await bot.download_file(file_info.file_path, ogg_path)
 
-    # Конвертация аудио в отдельном потоке
-    loop = asyncio.get_event_loop()
-    with ThreadPoolExecutor() as pool:
-        await loop.run_in_executor(
-            pool,
-            lambda: AudioSegment.from_ogg(ogg_path).export(mp3_path, format="mp3"),
+    # Конвертируем из OGG в MP3 (задаём опционально битрейт)
+    await asyncio.to_thread(
+        lambda: AudioSegment.from_ogg(ogg_path).export(
+            mp3_path, format="mp3", bitrate="192k"
+        )
+    )
+
+    # Проверяем, что mp3-файл создан и имеет ненулевой размер
+    if not mp3_path.exists() or mp3_path.stat().st_size == 0:
+        raise RuntimeError(
+            "Конвертация файла завершилась неудачно, mp3-файл не создан."
         )
 
-    # Использование asyncio.to_thread для вызова OpenAI API
-    with open(mp3_path, "rb") as audio_file:
-        transcription = await asyncio.to_thread(
-            lambda: client.audio.transcriptions.create(
+    # Открываем mp3-файл синхронно, чтобы сохранить атрибут filename
+    def call_whisper():
+        with open(mp3_path, "rb") as audio_file:
+            return client.audio.transcriptions.create(
                 model="whisper-1", file=audio_file
             )
-        )
-        sys_message = transcription.text
-        return sys_message
+
+    transcription = await asyncio.to_thread(call_whisper)
+
+    return transcription.text
+
+
+def chunk_text(text: str, chunk_size: int = 500) -> list[str]:
+    """
+    Делит строку `text` на список кусочков по длине не более `chunk_size`.
+    """
+    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+
+def write_streaming_response(streaming_resp, file_path: Path, chunk_size: int = 1024):
+    """
+    Синхронная функция, которая записывает потоковый ответ в файл.
+    Ожидается, что streaming_resp имеет метод iter_bytes(), возвращающий данные порциями.
+    """
+    with open(file_path, "wb") as f:
+        for chunk in streaming_resp.iter_bytes(chunk_size=chunk_size):
+            f.write(chunk)
+
+
+async def text_to_speech(unic_id: int, text_message: str):
+    """
+    Генерирует голосовые сообщения, разделяя текст на части по 500 символов.
+    Для каждой части вызывается TTS через OpenAI API.
+    """
+    from aiogram.types import FSInputFile
+
+    parts = chunk_text(text_message, 500)
+    results = []
+
+    for index, chunk in enumerate(parts, start=1):
+        try:
+            speech_file_path = (
+                Path(__file__).parent / f"voice/speech_{unic_id}_{index}.mp3"
+            )
+
+            # Вызываем синтез речи в отдельном потоке
+            response_voice = await asyncio.to_thread(
+                lambda: client.audio.speech.create(
+                    model="tts-1",
+                    voice="nova",
+                    input=chunk,
+                )
+            )
+
+            # Если метод with_streaming_response отсутствует, используем response_voice напрямую.
+            # Если в будущем этот метод появится, можно будет легко его добавить.
+            streaming_response = response_voice
+
+            # Записываем ответ в файл, выполняя синхронный код в отдельном потоке,
+            # чтобы не блокировать event loop.
+            await asyncio.to_thread(
+                lambda: write_streaming_response(
+                    streaming_response, speech_file_path, 1024
+                )
+            )
+
+            # Отправляем пользователю аудиофайл
+            audio = FSInputFile(speech_file_path)
+            msg = await bot.send_audio(
+                unic_id,
+                audio,
+                title=f"Аудио вариант ответа (часть {index})",
+            )
+            results.append(msg)
+
+        except Exception as e:
+            await bot.send_message(
+                unic_id,
+                f"Ошибка при озвучке части {index}: {e}",
+            )
+    return results

@@ -14,20 +14,25 @@ from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import CallbackQuery
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message
 from aiogram.utils.formatting import Text, Bold
 from openai import OpenAI
 
 from base import get_or_create_user_data, save_user_data
 from buttons import (
+    keyboard_pic,
+    keyboard,
     keyboard_model,
     keyboard_context,
     keyboard_voice,
     keyboard_value_work,
 )
-from buttons import keyboard_pic, keyboard
-from function import info_menu_func
-from function import prune_messages, process_voice_message
+from function import (
+    prune_messages,
+    process_voice_message,
+    info_menu_func,
+    text_to_speech,
+)
 from middlewares import ThrottlingMiddleware
 from text import start_message, help_message, system_message_text
 
@@ -89,16 +94,16 @@ async def command_start_handler(message: Message, state: FSMContext):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    user_data.model = "gpt-4o-mini"
-    user_data.model_message_info = "4o mini"
-    user_data.model_message_chat = "4o mini:\n\n"
-    user_data.messages = []
-    user_data.count_messages = 0
-    user_data.max_out = 240000
-    user_data.voice_answer = False
-    user_data.system_message = ""
-    user_data.pic_grade = "standard"
-    user_data.pic_size = "1024x1024"
+    user_data["model"] = "gpt-4o-mini"
+    user_data["model_message_info"] = "4o mini"
+    user_data["model_message_chat"] = "4o mini:\n\n"
+    user_data["messages"] = []
+    user_data["count_messages"] = 0
+    user_data["max_out"] = 240000
+    user_data["voice_answer"] = False
+    user_data["system_message"] = ""
+    user_data["pic_grade"] = "standard"
+    user_data["pic_size"] = "1024x1024"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
@@ -122,12 +127,13 @@ async def process_key_button(message: Message, state: FSMContext):
     info_menu = await info_menu_func(user_id)
 
     await message.answer(text=f"{info_menu}", reply_markup=keyboard)
+
     return
 
 
 @router.callback_query(F.data == "model_choice")
 async def process_callback_model_choice(
-        callback_query: CallbackQuery, state: FSMContext
+    callback_query: CallbackQuery, state: FSMContext
 ):
     user_id = callback_query.from_user.id
 
@@ -142,7 +148,7 @@ async def process_callback_model_choice(
     user_data = await get_or_create_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        text=f"<i>Модель:</i> {user_data["model_message_info"]} ",
         reply_markup=keyboard_model,
     )
 
@@ -161,20 +167,20 @@ async def process_callback_menu_1(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.model == "gpt-4o-mini":
+    if user_data["model"] == "gpt-4o-mini":
         await callback_query.answer()
         return
 
-    user_data.model = "gpt-4o-mini"
-    user_data.max_out = 240000
-    user_data.model_message_info = "4o mini"
-    user_data.model_message_chat = "4o mini:\n\n"
+    user_data["model"] = "gpt-4o-mini"
+    user_data["max_out"] = 240000
+    user_data["model_message_info"] = "4o mini"
+    user_data["model_message_chat"] = "4o mini:\n\n"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        text=f"<i>Модель:</i> {user_data["model_message_info"]} ",
         reply_markup=keyboard_model,
     )
 
@@ -193,20 +199,20 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.model == "gpt-4o":
+    if user_data["model"] == "gpt-4o":
         await callback_query.answer()
         return
 
-    user_data.model = "gpt-4o"
-    user_data.max_out = 240000
-    user_data.model_message_info = "4o"
-    user_data.model_message_chat = "4o:\n\n"
+    user_data["model"] = "gpt-4o"
+    user_data["max_out"] = 240000
+    user_data["model_message_info"] = "4o"
+    user_data["model_message_chat"] = "4o:\n\n"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        text=f"<i>Модель:</i> {user_data["model_message_info"]} ",
         reply_markup=keyboard_model,
     )
 
@@ -225,20 +231,20 @@ async def process_callback_menu_1(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.model == "o1-mini":
+    if user_data["model"] == "o1-mini":
         await callback_query.answer()
         return
 
-    user_data.model = "o1-mini"
-    user_data.max_out = 240000
-    user_data.model_message_info = "o1 mini"
-    user_data.model_message_chat = "o1 mini:\n\n"
+    user_data["model"] = "o1-mini"
+    user_data["max_out"] = 240000
+    user_data["model_message_info"] = "o1 mini"
+    user_data["model_message_chat"] = "o1 mini:\n\n"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        text=f"<i>Модель:</i> {user_data["model_message_info"]} ",
         reply_markup=keyboard_model,
     )
 
@@ -257,20 +263,20 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.model == "o1-preview":
+    if user_data["model"] == "o1-preview":
         await callback_query.answer()
         return
 
-    user_data.model = "o1-preview"
-    user_data.max_out = 240000
-    user_data.model_message_info = "o1"
-    user_data.model_message_chat = "o1:\n\n"
+    user_data["model"] = "o1-preview"
+    user_data["max_out"] = 240000
+    user_data["model_message_info"] = "o1"
+    user_data["model_message_chat"] = "o1:\n\n"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        text=f"<i>Модель:</i> {user_data["model_message_info"]} ",
         reply_markup=keyboard_model,
     )
 
@@ -289,19 +295,19 @@ async def process_callback_menu_3(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.model == "dall-e-3":
+    if user_data["model"] == "dall-e-3":
         await callback_query.answer()
         return
 
-    user_data.model = "dall-e-3"
-    user_data.model_message_info = "DALL·E 3"
-    user_data.model_message_chat = "DALL·E 3:\n\n"
+    user_data["model"] = "dall-e-3"
+    user_data["model_message_info"] = "DALL·E 3"
+    user_data["model_message_chat"] = "DALL·E 3:\n\n"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"<i>Модель:</i> {user_data.model_message_info} ",
+        text=f"<i>Модель:</i> {user_data["model_message_info"]} ",
         reply_markup=keyboard_model,
     )
 
@@ -311,7 +317,7 @@ async def process_callback_menu_3(callback_query: CallbackQuery):
 
 @router.callback_query(F.data == "pic_setup")
 async def process_callback_menu_pic_setup(
-        callback_query: CallbackQuery, state: FSMContext
+    callback_query: CallbackQuery, state: FSMContext
 ):
     user_id = callback_query.from_user.id
 
@@ -326,7 +332,7 @@ async def process_callback_menu_pic_setup(
     user_data = await get_or_create_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"{user_data.pic_grade} : {user_data.pic_size} ",
+        text=f"{user_data["pic_grade"]} : {user_data["pic_size"]} ",
         reply_markup=keyboard_pic,
     )
 
@@ -345,17 +351,17 @@ async def process_callback_set_sd(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.pic_grade == "standard":
+    if user_data["pic_grade"] == "standard":
         await callback_query.answer()
         return
 
-    user_data.pic_grade = "standard"
+    user_data["pic_grade"] = "standard"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"{user_data.pic_grade} : {user_data.pic_size} ",
+        text=f"{user_data["pic_grade"]} : {user_data["pic_size"]} ",
         reply_markup=keyboard_pic,
     )
 
@@ -374,17 +380,17 @@ async def process_callback_set_hd(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.pic_grade == "hd":
+    if user_data["pic_grade"] == "hd":
         await callback_query.answer()
         return
 
-    user_data.pic_grade = "hd"
+    user_data["pic_grade"] = "hd"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"{user_data.pic_grade} : {user_data.pic_size} ",
+        text=f"{user_data["pic_grade"]} : {user_data["pic_size"]} ",
         reply_markup=keyboard_pic,
     )
 
@@ -403,17 +409,17 @@ async def process_callback_set_1024x1024(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.pic_size == "1024x1024":
+    if user_data["pic_size"] == "1024x1024":
         await callback_query.answer()
         return
 
-    user_data.pic_size = "1024x1024"
+    user_data["pic_size"] = "1024x1024"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"{user_data.pic_grade} : {user_data.pic_size} ",
+        text=f"{user_data["pic_grade"]} : {user_data["pic_size"]} ",
         reply_markup=keyboard_pic,
     )
 
@@ -432,17 +438,17 @@ async def process_callback_set_1024x1792(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.pic_size == "1024x1792":
+    if user_data["pic_size"] == "1024x1792":
         await callback_query.answer()
         return
 
-    user_data.pic_size = "1024x1792"
+    user_data["pic_size"] = "1024x1792"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"{user_data.pic_grade} : {user_data.pic_size} ",
+        text=f"{user_data["pic_grade"]} : {user_data["pic_size"]} ",
         reply_markup=keyboard_pic,
     )
 
@@ -461,17 +467,17 @@ async def process_callback_set_1792x1024(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.pic_size == "1792x1024":
+    if user_data["pic_size"] == "1792x1024":
         await callback_query.answer()
         return
 
-    user_data.pic_size = "1792x1024"
+    user_data["pic_size"] = "1792x1024"
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"{user_data.pic_grade} : {user_data.pic_size} ",
+        text=f"{user_data["pic_grade"]} : {user_data["pic_size"]} ",
         reply_markup=keyboard_pic,
     )
 
@@ -481,7 +487,7 @@ async def process_callback_set_1792x1024(callback_query: CallbackQuery):
 
 @router.callback_query(F.data == "context_work")
 async def process_callback_context_work(
-        callback_query: CallbackQuery, state: FSMContext
+    callback_query: CallbackQuery, state: FSMContext
 ):
     user_id = callback_query.from_user.id
 
@@ -496,7 +502,7 @@ async def process_callback_context_work(
     user_data = await get_or_create_user_data(user_id)
 
     await callback_query.message.edit_text(
-        text=f"<i>Сообщений:</i> {user_data.count_messages} ",
+        text=f"<i>Сообщений:</i> {user_data["count_messages"]} ",
         reply_markup=keyboard_context,
     )
 
@@ -513,7 +519,7 @@ async def process_callback_context(callback_query: CallbackQuery):
         return
 
     user_data = await get_or_create_user_data(user_id)
-    history = await generate_history(user_data.messages)
+    history = await generate_history(user_data["messages"])
 
     if callback_query.message.text == "Контекст пуст":
         await callback_query.answer()
@@ -598,8 +604,8 @@ async def process_callback_clear(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    user_data.messages = []
-    user_data.count_messages = 0
+    user_data["messages"] = []
+    user_data["count_messages"] = 0
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
@@ -618,7 +624,7 @@ async def process_callback_clear(callback_query: CallbackQuery):
 
 @router.callback_query(F.data == "voice_answer_work")
 async def process_callback_voice_answer_work(
-        callback_query: CallbackQuery, state: FSMContext
+    callback_query: CallbackQuery, state: FSMContext
 ):
     user_id = callback_query.from_user.id
 
@@ -632,7 +638,7 @@ async def process_callback_voice_answer_work(
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    info_voice_answer = "Включен" if user_data.voice_answer else "Выключен"
+    info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
 
     await callback_query.message.edit_text(
         text=f"<i>Аудио:</i> {info_voice_answer}",
@@ -654,16 +660,16 @@ async def process_callback_voice_answer_add(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if user_data.voice_answer:
+    if user_data["voice_answer"]:
         await callback_query.answer()
         return
 
-    user_data.voice_answer = True
+    user_data["voice_answer"] = True
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
-    info_voice_answer = "Включен" if user_data.voice_answer else "Выключен"
+    info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
 
     await callback_query.message.edit_text(
         text=f"<i>Аудио:</i> {info_voice_answer}", reply_markup=keyboard_voice
@@ -684,16 +690,16 @@ async def process_callback_voice_answer_del(callback_query: CallbackQuery):
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if not user_data.voice_answer:
+    if not user_data["voice_answer"]:
         await callback_query.answer()
         return
 
-    user_data.voice_answer = False
+    user_data["voice_answer"] = False
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
-    info_voice_answer = "Включен" if user_data.voice_answer else "Выключен"
+    info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
 
     await callback_query.message.edit_text(
         text=f"<i>Аудио:</i> {info_voice_answer}",
@@ -706,7 +712,7 @@ async def process_callback_voice_answer_del(callback_query: CallbackQuery):
 
 @router.callback_query(F.data == "system_value_work")
 async def process_callback_voice_answer_work(
-        callback_query: CallbackQuery, state: FSMContext
+    callback_query: CallbackQuery, state: FSMContext
 ):
     user_id = callback_query.from_user.id
 
@@ -721,7 +727,9 @@ async def process_callback_voice_answer_work(
     user_data = await get_or_create_user_data(user_id)
 
     info_system_message = (
-        "Отсутствует" if not user_data.system_message else user_data.system_message
+        "Отсутствует"
+        if not user_data["system_message"]
+        else user_data["system_message"]
     )
 
     await callback_query.message.edit_text(
@@ -736,7 +744,7 @@ async def process_callback_voice_answer_work(
 # Обработчик нажатия на кнопку
 @router.callback_query(F.data == "change_value")
 async def process_callback_change_value(
-        callback_query: types.CallbackQuery, state: FSMContext
+    callback_query: types.CallbackQuery, state: FSMContext
 ):
     user_id = callback_query.from_user.id
 
@@ -756,7 +764,9 @@ async def process_callback_change_value(
 
 
 @router.callback_query(F.data == "delete_value")
-async def process_callback_delete_value(callback_query: CallbackQuery, state: FSMContext):
+async def process_callback_delete_value(
+    callback_query: CallbackQuery, state: FSMContext
+):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
@@ -769,17 +779,19 @@ async def process_callback_delete_value(callback_query: CallbackQuery, state: FS
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    if not user_data.system_message:
+    if not user_data["system_message"]:
         await callback_query.answer()
         return
 
-    user_data.system_message = ""
+    user_data["system_message"] = ""
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     info_system_message = (
-        "Отсутствует" if not user_data.system_message else user_data.system_message
+        "Отсутствует"
+        if not user_data["system_message"]
+        else user_data["system_message"]
     )
 
     await callback_query.message.edit_text(
@@ -812,7 +824,7 @@ async def process_new_value(message: types.Message, state: FSMContext):
     # Ваш метод получения или создания данных пользователя
     user_data = await get_or_create_user_data(user_id)
 
-    user_data.system_message = sys_massage
+    user_data["system_message"] = sys_massage
 
     # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
@@ -820,7 +832,9 @@ async def process_new_value(message: types.Message, state: FSMContext):
     await state.clear()
 
     info_system_message = (
-        "Отсутствует" if not user_data.system_message else user_data.system_message
+        "Отсутствует"
+        if not user_data["system_message"]
+        else user_data["system_message"]
     )
 
     await message.answer(
@@ -843,9 +857,7 @@ async def process_callback_menu_back(callback_query: CallbackQuery, state: FSMCo
 
     info_menu = await info_menu_func(user_id)
 
-    await callback_query.message.edit_text(
-        text=f"{info_menu}", reply_markup=keyboard
-    )
+    await callback_query.message.edit_text(text=f"{info_menu}", reply_markup=keyboard)
     return
 
 
@@ -863,20 +875,22 @@ async def process_callback_info(callback_query: CallbackQuery, state: FSMContext
     # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
-    info_voice_answer = "Включен" if user_data.voice_answer else "Выключен"
+    info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
 
     info_system_message = (
-        "Отсутствует" if not user_data.system_message else user_data.system_message
+        "Отсутствует"
+        if not user_data["system_message"]
+        else user_data["system_message"]
     )
 
     info_messages = (
         f"<i>Старт:</i> <b>{formatted_datetime}</b>\n"
         f"<i>User ID:</i> <b>{user_id}</b>\n"
-        f"<i>Модель:</i> <b>{user_data.model_message_info}</b>\n"
+        f"<i>Модель:</i> <b>{user_data["model_message_info"]}</b>\n"
         f"<i>Картинка</i>\n"
-        f"<i>Качество:</i> <b>{user_data.pic_grade}</b>\n"
-        f"<i>Размер:</i> <b>{user_data.pic_size}</b>\n"
-        f"<i>Сообщения:</i> <b>{user_data.count_messages}</b>\n"
+        f"<i>Качество:</i> <b>{user_data["pic_grade"]}</b>\n"
+        f"<i>Размер:</i> <b>{user_data["pic_size"]}</b>\n"
+        f"<i>Сообщения:</i> <b>{user_data["count_messages"]}</b>\n"
         f"<i>Аудио ответ:</i> <b>{info_voice_answer}</b>\n"
         f"<i>Роль:</i> <b>{info_system_message}</b>"
     )
@@ -935,34 +949,34 @@ async def chatgpt_text_handler(message: Message):
         promt = message.text
 
     if (
-            user_data.model == "gpt-4o-mini"
-            or user_data.model == "gpt-4o"
-            or user_data.model == "o1-mini"
-            or user_data.model == "o1-preview"
+        user_data["model"] == "gpt-4o-mini"
+        or user_data["model"] == "gpt-4o"
+        or user_data["model"] == "o1-mini"
+        or user_data["model"] == "o1-preview"
     ):
 
         # Добавляем сообщение пользователя в историю чата
-        user_data.messages.append({"role": "user", "content": promt})
+        user_data["messages"].append({"role": "user", "content": promt})
 
         # Применяем функцию обрезки
         pruned_messages = await prune_messages(
-            user_data.messages, max_chars=user_data.max_out
+            user_data["messages"], max_chars=user_data["max_out"]
         )
 
         try:
             # Добавляем роль system временно, без сохранения в контексте
             system_message = {
                 "role": "system",
-                "content": user_data.system_message,
+                "content": user_data["system_message"],
             }
 
-            if user_data.model == "gpt-4o-mini" or user_data.model == "gpt-4o":
+            if user_data["model"] == "gpt-4o-mini" or user_data["model"] == "gpt-4o":
                 pruned_messages.insert(0, system_message)
 
             # Use asyncio.to_thread for OpenAI API call
             chat_completion = await asyncio.to_thread(
                 lambda: client.chat.completions.create(
-                    model=user_data.model, messages=pruned_messages
+                    model=user_data["model"], messages=pruned_messages
                 )
             )
 
@@ -973,12 +987,12 @@ async def chatgpt_text_handler(message: Message):
             response_message = chat_completion.choices[0].message.content
 
             # Добавляем ответ модели в историю чата
-            user_data.messages.append(
+            user_data["messages"].append(
                 {"role": "assistant", "content": response_message}
             )
 
             # Счетчик сообщений пользователя
-            user_data.count_messages += 1
+            user_data["count_messages"] += 1
 
             # Сохранение обновленных данных в базу данных
             await save_user_data(user_id)
@@ -988,7 +1002,7 @@ async def chatgpt_text_handler(message: Message):
 
             # Функция отправки kwargs
             async def send_message_kwargs(
-                    model_massage_kwargs, response_message_kwargs
+                model_massage_kwargs, response_message_kwargs
             ):
                 content_kwargs = Text(
                     Bold(model_massage_kwargs), response_message_kwargs
@@ -998,7 +1012,7 @@ async def chatgpt_text_handler(message: Message):
                 )
 
             async def send_message_kwargs_long(
-                    model_message_kwargs, response_message_kwargs
+                model_message_kwargs, response_message_kwargs
             ):
                 content = f"{model_message_kwargs}\n{response_message_kwargs}"  # Соединяем две части сообщения
                 messages = content.split("\n")  # Разделяем сообщение по \n
@@ -1065,58 +1079,37 @@ async def chatgpt_text_handler(message: Message):
                         disable_web_page_preview=True,
                     )
 
-            async def text_to_speech(unic_id, text_message):
-                """Генерирует голосовое сообщение из текста с использованием OpenAI API."""
-                speech_file_path = Path(__file__).parent / f"voice/speech_{unic_id}.mp3"
-
-                response_voice = await asyncio.to_thread(
-                    lambda: client.audio.speech.create(
-                        model="tts-1",
-                        voice="nova",
-                        input=text_message,
-                    )
-                )
-
-                await asyncio.to_thread(
-                    lambda: response_voice.stream_to_file(speech_file_path)
-                )
-                audio = FSInputFile(speech_file_path)
-
-                return await bot.send_audio(
-                    unic_id, audio, title="Аудио вариант ответа"
-                )
-
             # Отправляем ответ модели пользователю
             try:
                 if "```" in response_message:
                     if len(response_message) > 4096:
                         await send_message_md_long(
-                            user_data.model_message_chat, response_message
+                            user_data["model_message_chat"], response_message
                         )
-                        if user_data.voice_answer:
+                        if user_data["voice_answer"]:
                             await text_to_speech(message.chat.id, response_message)
                         return
 
                     await send_message_md(
-                        user_data.model_message_chat, response_message
+                        user_data["model_message_chat"], response_message
                     )
-                    if user_data.voice_answer:
+                    if user_data["voice_answer"]:
                         await text_to_speech(message.chat.id, response_message)
                     return
 
                 else:
                     if len(response_message) > 4096:
                         await send_message_kwargs_long(
-                            user_data.model_message_chat, response_message
+                            user_data["model_message_chat"], response_message
                         )
-                        if user_data.voice_answer:
+                        if user_data["voice_answer"]:
                             await text_to_speech(message.chat.id, response_message)
                         return
 
                     await send_message_kwargs(
-                        user_data.model_message_chat, response_message
+                        user_data["model_message_chat"], response_message
                     )
-                    if user_data.voice_answer:
+                    if user_data["voice_answer"]:
                         await text_to_speech(message.chat.id, response_message)
                     return
 
@@ -1124,16 +1117,16 @@ async def chatgpt_text_handler(message: Message):
                 logging.exception(e)
                 if len(response_message) > 4096:
                     await send_message_kwargs_long(
-                        user_data.model_message_chat, response_message
+                        user_data["model_message_chat"], response_message
                     )
-                    if user_data.voice_answer:
+                    if user_data["voice_answer"]:
                         await text_to_speech(message.chat.id, response_message)
                     return
 
                 await send_message_kwargs(
-                    user_data.model_message_chat, response_message
+                    user_data["model_message_chat"], response_message
                 )
-                if user_data.voice_answer:
+                if user_data["voice_answer"]:
                     await text_to_speech(message.chat.id, response_message)
                 return
 
@@ -1142,7 +1135,7 @@ async def chatgpt_text_handler(message: Message):
             await message.reply(f"Произошла ошибка: {e}")
             return
 
-    elif user_data.model == "dall-e-3":
+    elif user_data["model"] == "dall-e-3":
 
         try:
             # Use asyncio.to_thread for OpenAI API call
@@ -1150,9 +1143,9 @@ async def chatgpt_text_handler(message: Message):
                 lambda: client.images.generate(
                     prompt=promt,
                     n=1,
-                    size=user_data.pic_size,
+                    size=user_data["pic_size"],
                     model="dall-e-3",
-                    quality=user_data.pic_grade,
+                    quality=user_data["pic_grade"],
                 )
             )
 
@@ -1165,7 +1158,7 @@ async def chatgpt_text_handler(message: Message):
         await message.bot.send_chat_action(chat_id, action="upload_photo")
 
         # Счетчик сообщений пользователя
-        user_data.count_messages += 1
+        user_data["count_messages"] += 1
 
         # Сохранение обновленных данных в базу данных
         await save_user_data(user_id)
@@ -1244,5 +1237,5 @@ async def process_image_with_gpt(text, base64_image):
 
 
 async def update_user_data(user_data, user_id):
-    user_data.count_messages += 1
+    user_data["count_messages"] += 1
     await save_user_data(user_id)

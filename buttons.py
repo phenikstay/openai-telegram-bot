@@ -1,4 +1,3 @@
-# Define button texts and callback data
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 BUTTONS_ALL = [
