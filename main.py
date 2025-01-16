@@ -10,7 +10,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from classes import init_async_db
-from handler import router
+from handler_menu import router
 
 config = configparser.ConfigParser()
 config.read(Path(__file__).parent / "config.ini")
