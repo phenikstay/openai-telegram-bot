@@ -302,6 +302,9 @@ def register_handlers(router, bot: Bot, client, OWNER_ID):
 
             ai_response = await process_image_with_gpt(text, base64_image)
 
+            # Добавляем ответ модели в историю чата
+            user_data["messages"].append({"role": "assistant", "content": ai_response})
+
             await update_user_data(user_data, user_id)
             await message.bot.delete_message(chat_id, temp_message.message_id)
             await message.answer(ai_response)
