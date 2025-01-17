@@ -29,7 +29,7 @@ from function import (
 )
 from handler_work import register_handlers
 from middlewares import ThrottlingMiddleware
-from text import start_message, help_message, system_message_text
+from text import start_message, system_message_text, help_message
 
 # Установка часового пояса, например, часовой пояс Москвы (UTC+3)
 timezone = pytz.timezone("Europe/Moscow")
@@ -705,6 +705,85 @@ async def process_callback_voice_answer_del(callback_query: CallbackQuery):
     return
 
 
+@router.callback_query(F.data == "back_menu")
+async def process_callback_menu_back(callback_query: CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    if state is not None:
+        await state.clear()
+
+    info_menu = await info_menu_func(user_id)
+
+    await callback_query.message.edit_text(text=f"{info_menu}", reply_markup=keyboard)
+    return
+
+
+@router.callback_query(F.data == "info")
+async def process_callback_info(callback_query: CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    if state is not None:
+        await state.clear()
+
+    # Получение или создание объектов пользовательских данных
+    user_data = await get_or_create_user_data(user_id)
+
+    info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
+
+    info_system_message = (
+        "Отсутствует"
+        if not user_data["system_message"]
+        else user_data["system_message"]
+    )
+
+    info_messages = (
+        f"<i>Старт:</i> <b>{formatted_datetime}</b>\n"
+        f"<i>User ID:</i> <b>{user_id}</b>\n"
+        f"<i>Модель:</i> <b>{user_data["model_message_info"]}</b>\n"
+        f"<i>Картинка</i>\n"
+        f"<i>Качество:</i> <b>{user_data["pic_grade"]}</b>\n"
+        f"<i>Размер:</i> <b>{user_data["pic_size"]}</b>\n"
+        f"<i>Сообщения:</i> <b>{user_data["count_messages"]}</b>\n"
+        f"<i>Аудио ответ:</i> <b>{info_voice_answer}</b>\n"
+        f"<i>Роль:</i> <b>{info_system_message}</b>"
+    )
+
+    await callback_query.message.edit_text(
+        text=info_messages,
+        reply_markup=None,
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.message(F.text == "/help")
+@flags.throttling_key("spin")
+async def help_handler(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+
+    if user_id not in OWNER_ID:
+        await message.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    if state is not None:
+        await state.clear()
+
+    # Получение или создание объектов пользовательских данных
+    await get_or_create_user_data(user_id)
+
+    await message.answer(help_message)
+    return
+
+
 @router.callback_query(F.data == "system_value_work")
 async def process_callback_voice_answer_work(
     callback_query: CallbackQuery, state: FSMContext
@@ -836,85 +915,6 @@ async def process_new_value(message: types.Message, state: FSMContext):
         text=f"<i>Роль:</i> {info_system_message}",
         reply_markup=keyboard_value_work,
     )
-    return
-
-
-@router.callback_query(F.data == "back_menu")
-async def process_callback_menu_back(callback_query: CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
-
-    if user_id not in OWNER_ID:
-        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
-        return
-
-    if state is not None:
-        await state.clear()
-
-    info_menu = await info_menu_func(user_id)
-
-    await callback_query.message.edit_text(text=f"{info_menu}", reply_markup=keyboard)
-    return
-
-
-@router.callback_query(F.data == "info")
-async def process_callback_info(callback_query: CallbackQuery, state: FSMContext):
-    user_id = callback_query.from_user.id
-
-    if user_id not in OWNER_ID:
-        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
-        return
-
-    if state is not None:
-        await state.clear()
-
-    # Получение или создание объектов пользовательских данных
-    user_data = await get_or_create_user_data(user_id)
-
-    info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
-
-    info_system_message = (
-        "Отсутствует"
-        if not user_data["system_message"]
-        else user_data["system_message"]
-    )
-
-    info_messages = (
-        f"<i>Старт:</i> <b>{formatted_datetime}</b>\n"
-        f"<i>User ID:</i> <b>{user_id}</b>\n"
-        f"<i>Модель:</i> <b>{user_data["model_message_info"]}</b>\n"
-        f"<i>Картинка</i>\n"
-        f"<i>Качество:</i> <b>{user_data["pic_grade"]}</b>\n"
-        f"<i>Размер:</i> <b>{user_data["pic_size"]}</b>\n"
-        f"<i>Сообщения:</i> <b>{user_data["count_messages"]}</b>\n"
-        f"<i>Аудио ответ:</i> <b>{info_voice_answer}</b>\n"
-        f"<i>Роль:</i> <b>{info_system_message}</b>"
-    )
-
-    await callback_query.message.edit_text(
-        text=info_messages,
-        reply_markup=None,
-    )
-
-    await callback_query.answer()
-    return
-
-
-@router.message(F.text == "/help")
-@flags.throttling_key("spin")
-async def help_handler(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-
-    if user_id not in OWNER_ID:
-        await message.answer("Извините, у вас нет доступа к этому боту.")
-        return
-
-    if state is not None:
-        await state.clear()
-
-    # Получение или создание объектов пользовательских данных
-    await get_or_create_user_data(user_id)
-
-    await message.answer(help_message)
     return
 
 
