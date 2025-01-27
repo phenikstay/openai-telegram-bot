@@ -43,9 +43,9 @@ async def start_bot():
 async def main():
     bot = None
     try:
+        await init_async_db()
         bot, dp = await start_bot()
         await set_commands(bot)
-        await init_async_db()
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     except Exception as e:
         logging.exception(f"An error occurred: {e}")
