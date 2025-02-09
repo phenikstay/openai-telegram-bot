@@ -29,36 +29,24 @@ from function import (
 )
 from handler_work import register_handlers
 from middlewares import ThrottlingMiddleware
-from text import start_message, system_message_text, help_message
+from text import start_message, system_message_text, help_message, null_message
 
-# Установка часового пояса, например, часовой пояс Москвы (UTC+3)
 timezone = pytz.timezone("Europe/Moscow")
-
-# Получение текущей даты и времени
 current_datetime = datetime.now(timezone)
-
-# Форматирование даты и времени
 formatted_datetime = current_datetime.strftime("%d.%m.%Y %H:%M:%S")
 
-# Чтение параметров из config.ini
+
 config = configparser.ConfigParser()
-
 config.read(Path(__file__).parent / "config.ini")
-
+openai_api_key = config.get("OpenAI", "api_key")
 TOKEN = config.get("Telegram", "token")
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
-# Параметры для OpenAI
-openai_api_key = config.get("OpenAI", "api_key")
-
-# Использование параметров для инициализации OpenAI
 client = OpenAI(api_key=openai_api_key)
 
-# Чтение списка ID из файла
 OWNER_ID = {int(owner_id) for owner_id in config.get("Telegram", "owner_id").split(",")}
 
-# Инициализация маршрутизатора
 router = Router()
 
 router.message.middleware(ThrottlingMiddleware(spin=1.5))
@@ -66,7 +54,6 @@ router.message.middleware(ThrottlingMiddleware(spin=1.5))
 last_message_id = {}
 
 
-# Создаем класс для машины состояний
 class ChangeValueState(StatesGroup):
     waiting_for_new_value = State()
 
@@ -86,7 +73,24 @@ async def command_start_handler(message: Message, state: FSMContext):
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
+    await get_or_create_user_data(user_id)
+
+    await message.answer(start_message)
+    return
+
+
+@router.message(F.text == "/null")
+@flags.throttling_key("spin")
+async def command_null_handler(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+
+    if user_id not in OWNER_ID:
+        await message.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    if state is not None:
+        await state.clear()
+
     user_data = await get_or_create_user_data(user_id)
 
     user_data["model"] = "gpt-4o-mini"
@@ -99,11 +103,11 @@ async def command_start_handler(message: Message, state: FSMContext):
     user_data["system_message"] = ""
     user_data["pic_grade"] = "standard"
     user_data["pic_size"] = "1024x1024"
+    user_data["assistant_thread_id"] = ""
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
-    await message.answer(start_message)
+    await message.answer(null_message)
     return
 
 
@@ -139,7 +143,6 @@ async def process_callback_model_choice(
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -159,7 +162,6 @@ async def process_callback_menu_1(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["model"] == "gpt-4o-mini":
@@ -171,7 +173,6 @@ async def process_callback_menu_1(callback_query: CallbackQuery):
     user_data["model_message_info"] = "4o mini"
     user_data["model_message_chat"] = "4o mini:\n\n"
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -191,7 +192,6 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["model"] == "gpt-4o":
@@ -203,7 +203,6 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
     user_data["model_message_info"] = "4o"
     user_data["model_message_chat"] = "4o:\n\n"
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -216,14 +215,13 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
 
 
 @router.callback_query(F.data == "gpt_o1_mini")
-async def process_callback_menu_1(callback_query: CallbackQuery):
+async def process_callback_menu_3(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["model"] == "o1-mini":
@@ -235,7 +233,6 @@ async def process_callback_menu_1(callback_query: CallbackQuery):
     user_data["model_message_info"] = "o1 mini"
     user_data["model_message_chat"] = "o1 mini:\n\n"
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -248,14 +245,13 @@ async def process_callback_menu_1(callback_query: CallbackQuery):
 
 
 @router.callback_query(F.data == "gpt_o1_preview")
-async def process_callback_menu_2(callback_query: CallbackQuery):
+async def process_callback_menu_4(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["model"] == "o1-preview":
@@ -264,10 +260,39 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
 
     user_data["model"] = "o1-preview"
     user_data["max_out"] = 240000
-    user_data["model_message_info"] = "o1"
-    user_data["model_message_chat"] = "o1:\n\n"
+    user_data["model_message_info"] = "o1 preview"
+    user_data["model_message_chat"] = "o1 preview:\n\n"
 
-    # Сохранение обновленных данных в базу данных
+    await save_user_data(user_id)
+
+    await callback_query.message.edit_text(
+        text=f"<i>Модель:</i> {user_data["model_message_info"]} ",
+        reply_markup=keyboard_model,
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.callback_query(F.data == "o3-mini")
+async def process_callback_menu_5(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    user_data = await get_or_create_user_data(user_id)
+
+    if user_data["model"] == "o3-mini":
+        await callback_query.answer()
+        return
+
+    user_data["model"] = "o3-mini"
+    user_data["max_out"] = 240000
+    user_data["model_message_info"] = "o3 mini"
+    user_data["model_message_chat"] = "o3 mini:\n\n"
+
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -280,14 +305,13 @@ async def process_callback_menu_2(callback_query: CallbackQuery):
 
 
 @router.callback_query(F.data == "dall_e_3")
-async def process_callback_menu_3(callback_query: CallbackQuery):
+async def process_callback_menu_6(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
 
     if user_id not in OWNER_ID:
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["model"] == "dall-e-3":
@@ -298,7 +322,35 @@ async def process_callback_menu_3(callback_query: CallbackQuery):
     user_data["model_message_info"] = "DALL·E 3"
     user_data["model_message_chat"] = "DALL·E 3:\n\n"
 
-    # Сохранение обновленных данных в базу данных
+    await save_user_data(user_id)
+
+    await callback_query.message.edit_text(
+        text=f"<i>Модель:</i> {user_data["model_message_info"]} ",
+        reply_markup=keyboard_model,
+    )
+
+    await callback_query.answer()
+    return
+
+
+@router.callback_query(F.data == "assistant")
+async def process_callback_menu_7(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if user_id not in OWNER_ID:
+        await callback_query.answer("Извините, у вас нет доступа к этому боту.")
+        return
+
+    user_data = await get_or_create_user_data(user_id)
+
+    if user_data["model"] == "assistant":
+        await callback_query.answer()
+        return
+
+    user_data["model"] = "assistant"
+    user_data["model_message_info"] = "ASSISTANT"
+    user_data["model_message_chat"] = "ASSISTANT:\n\n"
+
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -323,7 +375,6 @@ async def process_callback_menu_pic_setup(
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -343,7 +394,6 @@ async def process_callback_set_sd(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["pic_grade"] == "standard":
@@ -352,7 +402,6 @@ async def process_callback_set_sd(callback_query: CallbackQuery):
 
     user_data["pic_grade"] = "standard"
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -372,7 +421,6 @@ async def process_callback_set_hd(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["pic_grade"] == "hd":
@@ -381,7 +429,6 @@ async def process_callback_set_hd(callback_query: CallbackQuery):
 
     user_data["pic_grade"] = "hd"
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -401,7 +448,6 @@ async def process_callback_set_1024x1024(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["pic_size"] == "1024x1024":
@@ -410,7 +456,6 @@ async def process_callback_set_1024x1024(callback_query: CallbackQuery):
 
     user_data["pic_size"] = "1024x1024"
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -430,7 +475,6 @@ async def process_callback_set_1024x1792(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["pic_size"] == "1024x1792":
@@ -439,7 +483,6 @@ async def process_callback_set_1024x1792(callback_query: CallbackQuery):
 
     user_data["pic_size"] = "1024x1792"
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -459,7 +502,6 @@ async def process_callback_set_1792x1024(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["pic_size"] == "1792x1024":
@@ -468,7 +510,6 @@ async def process_callback_set_1792x1024(callback_query: CallbackQuery):
 
     user_data["pic_size"] = "1792x1024"
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -493,7 +534,6 @@ async def process_callback_context_work(
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     await callback_query.message.edit_text(
@@ -538,33 +578,25 @@ async def generate_history(messages):
 
 async def send_history(user_id, history):
     max_length = 4096
-    # Разбиваем историю на строки
     lines = history.split("\n")
     chunks = []
     current_chunk = []
 
     current_length = 0
     for line in lines:
-        # Добавляем длину строки и символ новой строки
         line_length = len(line) + 1
 
-        # Проверяем превышение длины текущего чанка
         if current_length + line_length > max_length:
-            # Добавляем текущий чанк в список чанков
             chunks.append("\n".join(current_chunk))
-            # Начинаем новый чанк
             current_chunk = [line]
             current_length = line_length
         else:
-            # Добавляем строку в текущий чанк и увеличиваем длину
             current_chunk.append(line)
             current_length += line_length
 
-    # Добавляем последний чанк, если он не пуст
     if current_chunk:
         chunks.append("\n".join(current_chunk))
 
-    # Отправляем все чанки
     for chunk in chunks:
         await send_message(user_id, chunk)
 
@@ -596,13 +628,13 @@ async def process_callback_clear(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     user_data["messages"] = []
     user_data["count_messages"] = 0
 
-    # Сохранение обновленных данных в базу данных
+    user_data["assistant_thread_id"] = ""
+
     await save_user_data(user_id)
 
     if callback_query.message.text == "Контекст очищен":
@@ -630,7 +662,6 @@ async def process_callback_voice_answer_work(
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
@@ -652,7 +683,6 @@ async def process_callback_voice_answer_add(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if user_data["voice_answer"]:
@@ -661,7 +691,6 @@ async def process_callback_voice_answer_add(callback_query: CallbackQuery):
 
     user_data["voice_answer"] = True
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
@@ -682,7 +711,6 @@ async def process_callback_voice_answer_del(callback_query: CallbackQuery):
         await callback_query.answer("Извините, у вас нет доступа к этому боту.")
         return
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if not user_data["voice_answer"]:
@@ -691,7 +719,6 @@ async def process_callback_voice_answer_del(callback_query: CallbackQuery):
 
     user_data["voice_answer"] = False
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
@@ -733,7 +760,6 @@ async def process_callback_info(callback_query: CallbackQuery, state: FSMContext
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     info_voice_answer = "Включен" if user_data["voice_answer"] else "Выключен"
@@ -777,7 +803,6 @@ async def help_handler(message: Message, state: FSMContext):
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
     await get_or_create_user_data(user_id)
 
     await message.answer(help_message)
@@ -797,7 +822,6 @@ async def process_callback_voice_answer_work(
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     info_system_message = (
@@ -815,7 +839,6 @@ async def process_callback_voice_answer_work(
     return
 
 
-# Обработчик нажатия на кнопку
 @router.callback_query(F.data == "change_value")
 async def process_callback_change_value(
     callback_query: types.CallbackQuery, state: FSMContext
@@ -850,7 +873,6 @@ async def process_callback_delete_value(
     if state is not None:
         await state.clear()
 
-    # Получение или создание объектов пользовательских данных
     user_data = await get_or_create_user_data(user_id)
 
     if not user_data["system_message"]:
@@ -859,7 +881,6 @@ async def process_callback_delete_value(
 
     user_data["system_message"] = ""
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     info_system_message = (
@@ -877,7 +898,6 @@ async def process_callback_delete_value(
     return
 
 
-# Обработчик ввода нового значения
 @router.message(StateFilter(ChangeValueState.waiting_for_new_value))
 async def process_new_value(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
@@ -892,15 +912,12 @@ async def process_new_value(message: types.Message, state: FSMContext):
         sys_massage = await process_voice_message(bot, message, user_id)
 
     elif message.text:
-        # Если сообщение содержит текст
         sys_massage = message.text
 
-    # Ваш метод получения или создания данных пользователя
     user_data = await get_or_create_user_data(user_id)
 
     user_data["system_message"] = sys_massage
 
-    # Сохранение обновленных данных в базу данных
     await save_user_data(user_id)
 
     await state.clear()
@@ -918,5 +935,4 @@ async def process_new_value(message: types.Message, state: FSMContext):
     return
 
 
-# Остальные хендлеры
 register_handlers(router, bot, client, OWNER_ID)

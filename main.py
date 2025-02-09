@@ -21,9 +21,10 @@ TOKEN = config.get("Telegram", "token")
 async def set_commands(bot: Bot):
     commands = {
         types.BotCommandScopeAllPrivateChats(): [
-            types.BotCommand(command="/start", description="🔄 старт/очистка"),
-            types.BotCommand(command="/menu", description="➡️ меню"),
-            types.BotCommand(command="/help", description="ℹ️ помощь!"),
+            types.BotCommand(command="/start", description="📌 старт"),
+            types.BotCommand(command="/menu", description="⚙️ меню"),
+            types.BotCommand(command="/help", description="🧰 помощь!"),
+            types.BotCommand(command="/null", description="🛠 заводские настройки"),
         ],
         types.BotCommandScopeAllGroupChats(): [],
     }
@@ -55,5 +56,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
+    logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
     asyncio.run(main())

@@ -1,7 +1,9 @@
 import asyncio
 import configparser
+import logging
 from pathlib import Path
 
+import aiohttp
 from aiogram import Bot, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -10,15 +12,12 @@ from pydub import AudioSegment
 
 from base import get_or_create_user_data
 
-# Читаем конфигурацию
 config = configparser.ConfigParser()
 config.read(Path(__file__).parent / "config.ini")
 
 TOKEN = config.get("Telegram", "token")
-
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
-# Параметры для OpenAI
 openai_api_key = config.get("OpenAI", "api_key")
 client = OpenAI(api_key=openai_api_key)
 
@@ -48,7 +47,6 @@ async def prune_messages(messages, max_chars):
     pruned_messages = []
     total_chars = 0
 
-    # Идём с конца к началу
     for message in reversed(messages):
         content_length = len(message["content"])
         remaining_chars = max_chars - total_chars
@@ -63,7 +61,6 @@ async def prune_messages(messages, max_chars):
         pruned_messages.append(message)
         total_chars += content_length
 
-    # Возвращаем в прямом порядке
     return list(reversed(pruned_messages))
 
 
@@ -75,30 +72,25 @@ async def process_voice_message(bot: Bot, message: types.Message, user_id: int):
     file_id = message.voice.file_id
     file_info = await bot.get_file(file_id)
 
-    # Создаем директорию 'voice', если она не существует
     voice_dir = Path(__file__).parent / "voice"
     voice_dir.mkdir(exist_ok=True)
 
     ogg_path = voice_dir / f"voice_{user_id}.ogg"
     mp3_path = voice_dir / f"voice_{user_id}.mp3"
 
-    # Скачиваем файл в формате OGG
     await bot.download_file(file_info.file_path, ogg_path)
 
-    # Конвертируем из OGG в MP3 (задаём опционально битрейт)
     await asyncio.to_thread(
         lambda: AudioSegment.from_ogg(ogg_path).export(
             mp3_path, format="mp3", bitrate="192k"
         )
     )
 
-    # Проверяем, что mp3-файл создан и имеет ненулевой размер
     if not mp3_path.exists() or mp3_path.stat().st_size == 0:
         raise RuntimeError(
             "Конвертация файла завершилась неудачно, mp3-файл не создан."
         )
 
-    # Открываем mp3-файл синхронно, чтобы сохранить атрибут filename
     def call_whisper():
         with open(mp3_path, "rb") as audio_file:
             return client.audio.transcriptions.create(
@@ -143,7 +135,6 @@ async def text_to_speech(unic_id: int, text_message: str):
                 Path(__file__).parent / f"voice/speech_{unic_id}_{index}.mp3"
             )
 
-            # Вызываем синтез речи в отдельном потоке
             response_voice = await asyncio.to_thread(
                 lambda: client.audio.speech.create(
                     model="tts-1",
@@ -152,19 +143,14 @@ async def text_to_speech(unic_id: int, text_message: str):
                 )
             )
 
-            # Если метод with_streaming_response отсутствует, используем response_voice напрямую.
-            # Если в будущем этот метод появится, можно будет легко его добавить.
             streaming_response = response_voice
 
-            # Записываем ответ в файл, выполняя синхронный код в отдельном потоке,
-            # чтобы не блокировать event loop.
             await asyncio.to_thread(
                 lambda: write_streaming_response(
                     streaming_response, speech_file_path, 1024
                 )
             )
 
-            # Отправляем пользователю аудиофайл
             audio = FSInputFile(speech_file_path)
             msg = await bot.send_audio(
                 unic_id,
@@ -179,3 +165,23 @@ async def text_to_speech(unic_id: int, text_message: str):
                 f"Ошибка при озвучке части {index}: {e}",
             )
     return results
+
+
+async def download_image(bot: Bot, file_id: str) -> bytes:
+    """Скачивает файл из Telegram и возвращает bytes"""
+    try:
+        file = await bot.get_file(file_id)
+
+        url = f"https://api.telegram.org/file/bot{bot.token}/{file.file_path}"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                response.raise_for_status()
+                return await response.read()
+
+    except aiohttp.ClientError as e:
+        logging.error(f"Ошибка сети: {str(e)}")
+        raise ValueError("Не удалось загрузить изображение из Telegram")
+    except Exception as e:
+        logging.error(f"Общая ошибка: {str(e)}")
+        raise ValueError("Ошибка при загрузке файла")
