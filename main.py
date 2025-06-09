@@ -1,21 +1,19 @@
 import asyncio
-import configparser
 import logging
 import sys
-from pathlib import Path
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
+from bot_manager import set_bot, close_bot
 from classes import init_async_db
+from config_manager import get_telegram_token
 from handler_menu import router
+from openai_manager import close_openai_client
 
-config = configparser.ConfigParser()
-config.read(Path(__file__).parent / "config.ini")
-
-TOKEN = config.get("Telegram", "token")
+TOKEN = get_telegram_token()
 
 
 async def set_commands(bot: Bot):
@@ -35,6 +33,14 @@ async def set_commands(bot: Bot):
 
 async def start_bot():
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    # Устанавливаем bot в менеджере для использования в других модулях
+    set_bot(bot)
+
+    # Инициализируем дополнительные обработчики
+    from handler_work import register_handlers
+
+    register_handlers(router, bot)
+
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
     await bot.delete_webhook(drop_pending_updates=True)
@@ -53,8 +59,14 @@ async def main():
     finally:
         if bot is not None:
             await bot.session.close()
+            await close_bot()
+            await close_openai_client()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
+    logging.basicConfig(
+        level=logging.WARNING,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        stream=sys.stdout,
+    )
     asyncio.run(main())

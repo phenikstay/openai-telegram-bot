@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Awaitable, Callable, Dict, MutableMapping, Optional
 
 from aiogram import BaseMiddleware
@@ -31,8 +32,6 @@ class ThrottlingMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any],
     ) -> Optional[Any]:
-        import asyncio  # Add this import at the top of the file
-
         user: Optional[User] = data.get("event_from_user")
 
         if user is None:
